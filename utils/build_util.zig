@@ -205,7 +205,7 @@ pub const RunProtocStep = struct {
                     std.debug.print("\n", .{});
                 }
 
-                _ = try step.evalChildProcess(argv.items);
+                try evalChildProcess(&self.step, argv.items, b.allocator);
             }
         }
 
@@ -216,8 +216,13 @@ pub const RunProtocStep = struct {
             try argv.append(b.allocator, "fmt");
             try argv.append(b.allocator, absolute_dest_dir);
 
-            _ = try step.evalChildProcess(argv.items);
+            try evalChildProcess(&self.step, argv.items, b.allocator);
         }
+    }
+
+    pub fn evalChildProcess(s: *std.Build.Step, argv: []const []const u8, gpa: std.mem.Allocator) !void {
+        const run_result = try std.Build.Step.captureChildProcess(s, gpa, std.Progress.Node.none, argv);
+        try std.Build.Step.handleChildProcessTerm(s, run_result.term);
     }
 };
 

@@ -9,10 +9,13 @@ const FullName = @import("./FullName.zig").FullName;
 pub const std_options: std.Options = .{ .log_scope_levels = &[_]std.log.ScopeLevel{.{ .level = .warn, .scope = .zig_protobuf }} };
 
 pub fn main() !void {
-    var stdin_buf: [4096]u8 = undefined;
-    var stdin = std.fs.File.stdin().reader(&stdin_buf);
-
     const allocator = std.heap.smp_allocator;
+    var io_impl: std.Io.Threaded = .init(allocator);
+    defer io_impl.deinit();
+    const io = io_impl.io();
+
+    var stdin_buf: [4096]u8 = undefined;
+    var stdin = std.fs.File.stdin().reader(io, &stdin_buf);
 
     const request: plugin.CodeGeneratorRequest = try .decode(
         &stdin.interface,
