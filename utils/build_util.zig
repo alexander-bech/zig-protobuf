@@ -205,22 +205,27 @@ pub const RunProtocStep = struct {
                     std.debug.print("\n", .{});
                 }
 
-                try evalChildProcess(&self.step, argv.items, b.allocator);
+                try evalChildProcess(step, argv.items, b.allocator);
             }
         }
 
         { // run zig fmt <destination>
+            step.result_failed_command = null;
+
             var argv: std.ArrayList([]const u8) = .empty;
 
             try argv.append(b.allocator, b.graph.zig_exe);
             try argv.append(b.allocator, "fmt");
             try argv.append(b.allocator, absolute_dest_dir);
 
-            try evalChildProcess(&self.step, argv.items, b.allocator);
+            try evalChildProcess(step, argv.items, b.allocator);
         }
     }
 
     pub fn evalChildProcess(s: *std.Build.Step, argv: []const []const u8, gpa: std.mem.Allocator) !void {
+        if (s.result_failed_command) |res| {
+            std.debug.print("running child process: {s} ", .{res});
+        }
         const run_result = try std.Build.Step.captureChildProcess(s, gpa, std.Progress.Node.none, argv);
         try std.Build.Step.handleChildProcessTerm(s, run_result.term);
     }
