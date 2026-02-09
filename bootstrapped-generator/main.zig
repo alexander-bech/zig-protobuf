@@ -244,7 +244,7 @@ const GenerationContext = struct {
         const bPath = packageToFileName(b, &b_path_buf);
 
         // to resolve some escaping oddities, the windows path separator is canonicalized to /
-        const resolvedRelativePath = try std.fs.path.relative(allocator, ".", null, aPath, bPath);
+        const resolvedRelativePath = try std.fs.path.relative(allocator, "..", null, aPath, bPath);
         return std.mem.replaceOwned(u8, allocator, resolvedRelativePath, "\\", "/");
     }
 
