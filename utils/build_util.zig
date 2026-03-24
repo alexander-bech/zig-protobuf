@@ -4,7 +4,7 @@ const builtin = @import("builtin");
 pub const PROTOC_VERSION = "32.1";
 
 var st = std.Io.Threaded.init_single_threaded;
-const io = st.ioBasic();
+const io = st.io();
 
 // File system utilities
 pub fn dirExists(path: []const u8) bool {
