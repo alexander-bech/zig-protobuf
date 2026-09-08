@@ -18,7 +18,7 @@ pub fn parse(
     // Mainly taken from 0.13.0's source code
     var result: Self = undefined;
     const structInfo = @typeInfo(Self).@"struct";
-    var fields_seen = [_]bool{false} ** structInfo.fields.len;
+    var fields_seen: [structInfo.field_names.len]bool = @splat(false);
 
     while (true) {
         var name_token: ?std.json.Token = try source.nextAllocMax(
@@ -36,8 +36,9 @@ pub fn parse(
             },
         };
 
-        inline for (structInfo.fields, 0..) |field, i| {
-            if (field.is_comptime) {
+        inline for (structInfo.field_names, structInfo.field_types, structInfo.field_attrs, 0..) |name, FieldType, attrs, i| {
+            const field = .{ .name = name, .type = FieldType };
+            if (attrs.@"comptime") {
                 @compileError("comptime fields are not supported: " ++ @typeName(Self) ++ "." ++ field.name);
             }
 
@@ -128,7 +129,8 @@ pub fn stringify(Self: type, self: *const Self, jws: anytype) !void {
 
     try jws.beginObject();
 
-    inline for (@typeInfo(Self).@"struct".fields) |fieldInfo| {
+    inline for (@typeInfo(Self).@"struct".field_names, @typeInfo(Self).@"struct".field_types) |name, FieldType| {
+        const fieldInfo = .{ .name = name, .type = FieldType };
         const camel_case_name = comptime to_camel_case(fieldInfo.name);
 
         if (switch (@typeInfo(fieldInfo.type)) {
@@ -239,7 +241,8 @@ fn stringify_struct_field(
             }
 
             try jws.beginObject();
-            inline for (union_info.fields) |union_field| {
+            inline for (union_info.field_names, union_info.field_types) |name, FieldType| {
+                const union_field = .{ .name = name, .type = FieldType };
                 if (value == @field(
                     union_info.tag_type.?,
                     union_field.name,
@@ -277,7 +280,7 @@ fn stringify_struct_field(
 fn parseStructField(
     comptime T: type,
     result: *T,
-    comptime fieldInfo: std.builtin.Type.StructField,
+    comptime fieldInfo: anytype,
     allocator: std.mem.Allocator,
     source: anytype,
     options: std.json.ParseOptions,
@@ -358,7 +361,8 @@ fn parseStructField(
                 },
             };
 
-            inline for (union_info.fields) |union_field| {
+            inline for (union_info.field_names, union_info.field_types) |name, FieldType| {
+                const union_field = .{ .name = name, .type = FieldType };
                 // snake_case comparison
                 var this_field = std.mem.eql(u8, union_field.name, field_name);
                 if (!this_field) {
@@ -543,13 +547,13 @@ fn parse_bytes(
 fn fillDefaultStructValues(
     comptime T: type,
     r: *T,
-    fields_seen: *[@typeInfo(T).@"struct".fields.len]bool,
+    fields_seen: *[@typeInfo(T).@"struct".field_names.len]bool,
 ) error{MissingField}!void {
     // Took from std.json source code since it was non-public one
-    inline for (@typeInfo(T).@"struct".fields, 0..) |field, i| {
+    inline for (@typeInfo(T).@"struct".field_names, @typeInfo(T).@"struct".field_types, @typeInfo(T).@"struct".field_attrs, 0..) |name, FieldType, attrs, i| {
         if (!fields_seen[i]) {
-            if (field.defaultValue()) |default| {
-                @field(r, field.name) = default;
+            if (attrs.defaultValue(FieldType)) |default| {
+                @field(r, name) = default;
             } else {
                 return error.MissingField;
             }

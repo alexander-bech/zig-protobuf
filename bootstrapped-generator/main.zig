@@ -160,7 +160,7 @@ const GenerationContext = struct {
             try self.res.file.append(allocator, ret);
         }
 
-        self.res.supported_features = @intFromEnum(plugin.CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL);
+        self.res.supported_features = @backingInt(plugin.CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL);
     }
 
     fn getOutputLines(self: *GenerationContext, allocator: std.mem.Allocator, name: FullName) !*std.ArrayList([]const u8) {
@@ -480,7 +480,7 @@ const GenerationContext = struct {
                 => "0",
                 .TYPE_BOOL => "false",
                 .TYPE_STRING, .TYPE_BYTES => "&.{}",
-                .TYPE_ENUM => "@enumFromInt(0)",
+                .TYPE_ENUM => "@fromBackingInt(@intCast(0))",
                 else => null,
             };
         }

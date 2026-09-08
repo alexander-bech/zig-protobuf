@@ -509,7 +509,6 @@ pub fn decodeMessage(
 ) (std.Io.Reader.Error || std.mem.Allocator.Error || protobuf.DecodingError)!usize {
     comptime std.debug.assert(@typeInfo(@TypeOf(result)) == .pointer);
     const Result = comptime @typeInfo(@TypeOf(result)).pointer.child;
-    const ResultField = std.meta.FieldEnum(Result);
     comptime std.debug.assert(@TypeOf(result) == *Result);
     const desc_table = Result._desc_table;
 
@@ -530,11 +529,11 @@ pub fn decodeMessage(
         consumed += tag_c;
 
         @setEvalBranchQuota(40_000);
-        inline for (@typeInfo(@TypeOf(desc_table)).@"struct".fields) |field| {
+        inline for (@typeInfo(@TypeOf(desc_table)).@"struct".field_names) |name| {
+            const field = .{ .name = name };
             const field_desc: protobuf.FieldDescriptor =
                 comptime @field(desc_table, field.name);
-            const field_info: std.builtin.Type.StructField =
-                std.meta.fieldInfo(Result, @field(ResultField, field.name));
+            const field_attrs = @typeInfo(Result).@"struct".field_attrs[std.meta.fieldIndex(Result, name).?];
 
             if (comptime field_desc.ftype != .oneof) {
                 if (comptime field_desc.field_number == null)
@@ -598,7 +597,7 @@ pub fn decodeMessage(
                         if (comptime Field == []const u8) {
                             const existing: []const u8 =
                                 @field(result, field.name);
-                            if (comptime field_info.defaultValue()) |default| {
+                            if (comptime field_attrs.defaultValue(@FieldType(Result, name))) |default| {
                                 if (default.ptr != existing.ptr and
                                     existing.len > 0)
                                 {
@@ -610,7 +609,7 @@ pub fn decodeMessage(
                         } else if (comptime Field == ?[]const u8) {
                             if (@field(result, field.name)) |existing| {
                                 if (existing.len > 0) {
-                                    if (comptime field_info.defaultValue()) |opt| {
+                                    if (comptime field_attrs.defaultValue(@FieldType(Result, name))) |opt| {
                                         if (comptime opt != null) {
                                             if (opt.?.ptr != existing.ptr) {
                                                 allocator.free(existing);
@@ -811,7 +810,8 @@ pub fn decodeMessage(
                     const oneof_ti = comptime @typeInfo(OneOf).@"union";
 
                     const inner_desc_table = comptime OneOf._desc_table;
-                    oo_fields: inline for (oneof_ti.fields) |oo_field| {
+                    oo_fields: inline for (oneof_ti.field_names, oneof_ti.field_types) |oo_name, OneofFieldType| {
+                        const oo_field = .{ .name = oo_name, .type = OneofFieldType };
                         const inner_desc: protobuf.FieldDescriptor =
                             comptime @field(inner_desc_table, oo_field.name);
 
@@ -886,10 +886,10 @@ pub fn decodeMessage(
                                 const raw, const c =
                                     try decodeScalar(.int32, reader);
                                 consumed += c;
-                                const decoded = std.meta.intToEnum(
+                                const decoded = std.enums.fromInt(
                                     oo_field.type,
                                     raw,
-                                ) catch {
+                                ) orelse {
                                     @branchHint(.cold);
                                     return error.InvalidInput;
                                 };

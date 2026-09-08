@@ -163,17 +163,17 @@ pub fn build(b: *std.Build) !void {
         test_step.dependOn(&run_main_tests.step);
     }
 
-    const include = if (try build_util.getProtocDependency(b)) |protoc| protoc.path("include").getPath(b) else std.fs.path.dirname(@src().file) orelse ".";
+    const include = if (try build_util.getProtocDependency(b)) |protoc| protoc.path("include") else b.path(".");
 
     const bootstrap = b.step("bootstrap", "run the generator over its own sources");
 
     const bootstrapConversion = RunProtocStep.create(b, target, .{
         .destination_directory = b.path("bootstrapped-generator"),
-        .source_files = &.{
-            b.pathJoin(&.{ include, "google/protobuf/compiler/plugin.proto" }),
-            b.pathJoin(&.{ include, "google/protobuf/descriptor.proto" }),
+        .source_paths = &.{
+            include.path(b, "google/protobuf/compiler/plugin.proto"),
+            include.path(b, "google/protobuf/descriptor.proto"),
         },
-        .include_directories = &.{},
+        .include_paths = &.{include},
     });
 
     bootstrap.dependOn(&bootstrapConversion.step);

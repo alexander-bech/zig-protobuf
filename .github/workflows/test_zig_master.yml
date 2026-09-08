@@ -3,9 +3,11 @@ on:
   push:
     branches:
       - zig-master
+      - latest
   pull_request:
     branches:
       - zig-master
+      - latest
 jobs:
   test_latest:
     strategy:
@@ -40,4 +42,4 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v1
         with:
           version: master
-      - run: zig fmt --check src/protobuf.zig
+      - run: zig fmt --check build.zig build.zig.zon utils/build_util.zig utils/copy_generated.zig src/protobuf.zig src/json.zig src/wire.zig bootstrapped-generator/main.zig tests/tests_json.zig
